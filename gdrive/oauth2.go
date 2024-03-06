@@ -23,7 +23,7 @@ var (
 func newHTTPClient(ctx context.Context, clientID string, clientSecret string) *http.Client {
 	fmt.Printf("start getting the token\n")
 	config = &oauth2.Config{
-		RedirectURL:  "http://localhost:8765/callback",
+		RedirectURL:  "https://eevee.ucsd.edu:8765/callback",
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		Scopes:       []string{
@@ -33,6 +33,9 @@ func newHTTPClient(ctx context.Context, clientID string, clientSecret string) *h
 	}
 
 	tok, err := getTokenFromFile()
+	if !tok.Valid() {
+		err = fmt.Errorf("token expired")
+	}
 	if err != nil {
 		fmt.Printf("fail to get the token from file, start getting it from the web\n")
 		tok = getTokenFromWeb(ctx, config)
@@ -47,7 +50,7 @@ func newHTTPClient(ctx context.Context, clientID string, clientSecret string) *h
 }
 
 func handleMain(w http.ResponseWriter, r *http.Request) {
-	url := config.AuthCodeURL("state")
+	url := config.AuthCodeURL("state", oauth2.ApprovalForce, oauth2.AccessTypeOffline)
 	fmt.Printf("going to the following url: %s\n", url)
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
@@ -117,7 +120,8 @@ func getTokenFromWeb(ctx context.Context, config *oauth2.Config) *oauth2.Token{
 		http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
 			handleCallback(w, r, tokenCh, ctx)
 		})
-		srv.ListenAndServe()
+		srv.ListenAndServeTLS("/etc/letsencrypt/live/eevee.ucsd.edu/fullchain.pem", "/etc/letsencrypt/live/eevee.ucsd.edu/privkey.pem")
+		// srv.ListenAndServe()
 	}()
 	token := <-tokenCh
 
@@ -141,5 +145,6 @@ func saveToken(token *oauth2.Token) error {
 		return err
 	}
 	defer f.Close()
+	fmt.Println(token.RefreshToken)
 	return json.NewEncoder(f).Encode(token)
 }

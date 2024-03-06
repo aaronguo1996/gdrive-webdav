@@ -59,7 +59,7 @@ func main() {
 
 	log.Info("Listening on: ", *addr)
 
-	err := http.ListenAndServe(*addr, nil)
+	err := http.ListenAndServeTLS(*addr, "/etc/letsencrypt/live/eevee.ucsd.edu/fullchain.pem", "/etc/letsencrypt/live/eevee.ucsd.edu/privkey.pem", nil)
 	if err != nil {
 		log.Errorf("Error starting HTTP server: %v", err)
 		os.Exit(-1)
